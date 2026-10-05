@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Multimodal Talking Agent | Sub-100ms 30FPS WebRTC</title>
+  <meta name="description" content="Instantaneous ultra-low latency visual and vocal bridge synchronizing human text and video input with dynamically synthesized human avatars at 30FPS WebRTC.">
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Top HUD Telemetry Bar -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <h1 class="brand-title">Multimodal Talking Agent</h1>
+        <div class="brand-subtitle">Real-Time Vocal &amp; Visual Bridge • Sub-100ms • 30FPS WebRTC</div>
+      </div>
+    </div>
+
+    <!-- Mode Selector & Telemetry Badges -->
+    <div class="telemetry-badges">
+      <div class="mode-selector-pill">
+        <button class="mode-pill-btn active" id="btnModeEdge" title="Ultra-low latency instant local WebRTC bridge">
+          ⚡ Edge WebRTC
+        </button>
+        <button class="mode-pill-btn" id="btnModeDid" title="Official D-ID Cloud WebRTC Stream">
+          🌐 D-ID Cloud
+        </button>
+      </div>
+
+      <div class="hud-badge emerald" id="webrtcStatusBadge">
+        <span class="pulse-dot"></span> WebRTC 30FPS Online
+      </div>
+      <div class="hud-badge cyan">
+        <span class="pulse-dot"></span> Latency: <strong id="latencyVal" style="margin-left: 4px;">32 ms</strong>
+      </div>
+      <div class="hud-badge purple" id="creditsBadge">
+        D-ID API: <strong id="creditsCount" style="margin-left: 4px;">9 Credits</strong>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Viewport Layout -->
+  <main class="main-viewport">
+    
+    <!-- Stage: Live WebRTC Video Stream & Avatar Canvas -->
+    <section class="stage-panel" aria-label="Avatar Video Stream">
+      <div class="stream-container" id="streamContainer">
+        <!-- Internal rendering canvas providing 30FPS stream -->
+        <canvas id="avatarCanvas" width="512" height="512"></canvas>
+        
+        <!-- WebRTC Video Output Player receiving stream -->
+        <video id="webrtcVideo" autoplay playsinline muted></video>
+
+        <!-- Top HUD Overlay -->
+        <div class="stream-overlay-hud">
+          <div class="overlay-pill">
+            <span class="pulse-dot" style="background:#00f2fe;"></span>
+            <span id="activePersonaName">Dr. Maya Vance</span>
+            <span style="opacity:0.5;">|</span>
+            <span id="activePersonaCat" style="color:#00f2fe;">Adult Woman / AI Scientist</span>
+          </div>
+          <div class="overlay-pill" style="border-color: rgba(0, 245, 212, 0.4);">
+            <span id="streamFpsVal">30 FPS</span> • <span id="streamModeLabel">Edge WebRTC Active</span>
+          </div>
+        </div>
+
+        <!-- D-ID Cloud Stream Connection Bar (When in D-ID Mode) -->
+        <div class="did-stream-bar" id="didStreamBar" style="display: none;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="pulse-dot" style="background:#9d4edd;"></span>
+            <span id="didStreamStatusText" style="font-size:0.78rem; font-family:var(--font-mono); color:var(--text-main);">D-ID Stream: Idle</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-micro primary" id="btnConnectDidStream">Connect D-ID WebRTC</button>
+            <button class="btn-micro danger" id="btnCloseDidStream" style="display:none;">Disconnect</button>
+          </div>
+        </div>
+
+        <!-- Bottom HUD Overlay: Viseme Analyzer & Behaviors -->
+        <div class="stream-bottom-hud">
+          <div class="viseme-analyzer">
+            <div class="viseme-label">
+              <span>Viseme Formants</span>
+              <span style="color:#00f2fe;">Sub-100ms</span>
+            </div>
+            <div class="viseme-bars">
+              <div class="viseme-bar" id="visBar0" title="Jaw Low Band (80-250Hz)"></div>
+              <div class="viseme-bar" id="visBar1" title="F1 Formant (300-600Hz)"></div>
+              <div class="viseme-bar" id="visBar2" title="F2 Formant (800-1400Hz)"></div>
+              <div class="viseme-bar" id="visBar3" title="Vowel Spread (1500-2400Hz)"></div>
+              <div class="viseme-bar" id="visBar4" title="Sibilance (3000-5000Hz)"></div>
+              <div class="viseme-bar" id="visBar5" title="Consonant Plosive"></div>
+            </div>
+          </div>
+
+          <div class="behavior-status-pills">
+            <div class="behavior-tag" id="tagBlink">Micro-Blinks: ON</div>
+            <div class="behavior-tag" id="tagSaccade">Saccades: ON</div>
+            <div class="behavior-tag" id="tagHead">Head-Tilt: ON</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Stream Telemetry Metrics Deck -->
+      <div class="metrics-deck">
+        <div class="metric-card">
+          <span class="metric-title">Stream Protocol</span>
+          <span class="metric-val cyan" id="telemetryStreamProto">WebRTC 30FPS</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">Lip-Sync Latency</span>
+          <span class="metric-val emerald" id="telemetryLatency">&lt; 35 ms</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">Facial Geometry</span>
+          <span class="metric-val purple">Dual-Layer Rig</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">Behavior Engine</span>
+          <span class="metric-val emerald">Lifelike Active</span>
+        </div>
+      </div>
+
+      <!-- Live Audio Waveform & Speech Visualizer -->
+      <div class="conversation-transcript-box">
+        <div class="transcript-header">
+          <span>Real-Time Interaction Log</span>
+          <span id="interactionTimeBadge" style="color:var(--accent-cyan); font-family:var(--font-mono); font-size:0.72rem;">Ready</span>
+        </div>
+        <div class="transcript-stream" id="transcriptStream">
+          <div class="transcript-item system">
+            <span class="t-role">SYSTEM</span>
+            <span class="t-text">Real-Time Multimodal Talking Agent bridge initialized. WebRTC 30FPS output active. Ready for text or video input.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Control Deck & Operational Parameters Tabs -->
+    <section class="control-deck" aria-label="Agent Controls">
+      <!-- Tabs Navigation -->
+      <nav class="deck-tabs">
+        <button class="tab-btn active" data-target="tabInput">
+          <span>💬</span> Text Input
+        </button>
+        <button class="tab-btn" data-target="tabVideo">
+          <span>📹</span> Video Analysis
+        </button>
+        <button class="tab-btn" data-target="tabAvatars">
+          <span>👤</span> Face Synthesis
+        </button>
+        <button class="tab-btn" data-target="tabDid">
+          <span>🌐</span> D-ID Cloud Studio
+        </button>
+      </nav>
+
+      <!-- TAB 1: Input Processing (Text & Speech) -->
+      <div class="tab-pane active" id="tabInput">
+        <div class="form-group">
+          <label class="form-label" for="textInput">
+            <span>Human Text Input (Instantaneous TTS &amp; Lip-Sync)</span>
+            <span class="label-hint">Sub-100ms Vocal Bridge</span>
+          </label>
+          <textarea id="textInput" class="text-input" placeholder="Type any text message to immediately synthesize speech and 30FPS synced facial lip movement...">Hello! I am your Real-Time Multimodal Talking Agent. I maintain sub-100ms lip synchronization and continuous natural human micro-expressions over a 30 frames per second WebRTC stream. How can I assist you today?</textarea>
+        </div>
+
+        <!-- Quick Prompts -->
+        <div class="form-group">
+          <span class="form-label">Operational Demo Scenarios:</span>
+          <div class="quick-prompts">
+            <button class="prompt-chip" data-prompt="Notice how my mouth movements, jaw lines, and micro-expressions align instantaneously with my voice with under 40 milliseconds of latency.">
+              🎯 Latency Benchmark
+            </button>
+            <button class="prompt-chip" data-prompt="I incorporate micro-blinks, subtle head tilts, and realistic eye gaze shifts to remain convincingly lifelike without uncanny valley artifacts.">
+              👁️ Human Behavior Test
+            </button>
+            <button class="prompt-chip" data-prompt="Upload any human video file or picture in the adjacent tabs, and I will extract the temporal context and adapt to any face provided.">
+              🔄 Multimodal Ingestion
+            </button>
+            <button class="prompt-chip" data-prompt="We are transmitting this stream over WebRTC at a steady 30 frames per second to ensure smooth, conversational interaction.">
+              ⚡ 30FPS WebRTC Test
+            </button>
+          </div>
+        </div>
+
+        <!-- Voice Modulation Parameters -->
+        <div class="sliders-row">
+          <div class="form-group">
+            <label class="form-label" for="voiceRateSlider">
+              <span>Speech Rate: <strong id="rateDisplay">1.0x</strong></span>
+            </label>
+            <input type="range" id="voiceRateSlider" min="0.7" max="1.4" step="0.05" value="1.0" oninput="document.getElementById('rateDisplay').innerText = this.value + 'x'">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="voicePitchSlider">
+              <span>Voice Pitch: <strong id="pitchDisplay">1.0x</strong></span>
+            </label>
+            <input type="range" id="voicePitchSlider" min="0.6" max="1.5" step="0.05" value="1.0" oninput="document.getElementById('pitchDisplay').innerText = this.value + 'x'">
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button class="btn-primary" id="btnSpeak">
+          <span>⚡</span> Synthesize &amp; Stream to Avatar (Sub-100ms)
+        </button>
+      </div>
+
+      <!-- TAB 2: Multimodal Video Input & Temporal Context -->
+      <div class="tab-pane" id="tabVideo">
+        <div class="form-group">
+          <label class="form-label">
+            <span>Streamed Video File Ingestion</span>
+            <span class="label-hint">OpenCV Frame &amp; Temporal Context Extractor</span>
+          </label>
+          <div class="upload-dropzone" id="videoDropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">Upload Video File (.mp4, .webm, .mov)</div>
+            <div class="dropzone-sub">Extracts frames, motion vectors, and temporal intent to match avatar behavior</div>
+            <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" style="display:none;">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+          <button class="btn-secondary" id="btnSampleVideo" style="flex: 1;">
+            <span>🎬</span> Analyze Sample Video Stream
+          </button>
+          <button class="btn-secondary" id="btnWebcam" style="flex: 1;">
+            <span>📷</span> Connect Live User Webcam
+          </button>
+        </div>
+
+        <video id="userWebcamPreview" style="display:none; width:100%; border-radius:10px; max-height:160px; object-fit:cover; border:1px solid rgba(0,242,254,0.3); margin-bottom:12px;" autoplay muted></video>
+
+        <!-- Video Analysis Results Card -->
+        <div class="analysis-results-card" id="videoAnalysisResults" style="display: none;">
+          <div class="analysis-header">
+            <span class="analysis-title">Temporal Context &amp; User Intent</span>
+            <span class="hud-badge emerald" id="analysisIntent">Conversational Interaction</span>
+          </div>
+
+          <div class="analysis-metrics-row">
+            <div class="a-metric-box">
+              <span class="a-metric-lbl">Emotional Valence</span>
+              <span class="a-metric-val" id="analysisValence">High Energy</span>
+            </div>
+            <div class="a-metric-box">
+              <span class="a-metric-lbl">Motion Energy</span>
+              <span class="a-metric-val" id="analysisMotion">8.42</span>
+            </div>
+            <div class="a-metric-box">
+              <span class="a-metric-lbl">Analyzed Duration</span>
+              <span class="a-metric-val" id="analysisDuration">4.0s</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <span style="font-size:0.75rem; color:var(--text-muted);">Avatar Adaptation Cue:</span>
+            <div id="analysisBehavior" style="font-size:0.82rem; color:var(--accent-cyan); font-weight:600; margin-top:3px;">
+              Mirror animated nodding and enthusiastic engagement
+            </div>
+          </div>
+
+          <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; margin-top:10px;">Extracted Keyframe Timeline:</div>
+          <div class="keyframes-strip" id="keyframesStrip"></div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Avatar Face Synthesis & Upload -->
+      <div class="tab-pane" id="tabAvatars">
+        <!-- Demographics & Diverse Presets -->
+        <div class="form-group">
+          <label class="form-label">
+            <span>Face Synthesis &amp; Demographic Presets</span>
+            <span class="label-hint">Adult Woman, Adult Man, Child, Elder, Youth</span>
+          </label>
+          <div class="avatar-grid" id="avatarGrid">
+            <!-- Dynamically populated from /api/avatars -->
+          </div>
+        </div>
+
+        <!-- Section 1: AI Prompt-based Face Synthesis -->
+        <div class="sub-card-box">
+          <div class="form-label" style="margin-bottom: 8px;">
+            <span>✨ AI Face Synthesis by Prompt</span>
+            <span class="label-hint">Any Age, Gender, Ethnicity</span>
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="aiPromptInput" class="text-input" style="height:42px; padding:8px 12px; margin-bottom:0;" placeholder="e.g., elderly Japanese scholar with kind eyes and silver hair...">
+            <select id="aiPromptGender" class="select-input">
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Youth">Youth</option>
+            </select>
+          </div>
+          <div class="quick-ai-prompts" style="margin-bottom: 8px;">
+            <span class="prompt-chip mini" data-ai="smiling 8-year-old child with freckles and bright eyes" data-gender="Youth">👶 Child</span>
+            <span class="prompt-chip mini" data-ai="distinguished elderly scholar with glasses and silver hair" data-gender="Male">👴 Elder</span>
+            <span class="prompt-chip mini" data-ai="African female aerospace researcher with radiant smile" data-gender="Female">👩 Scientist</span>
+            <span class="prompt-chip mini" data-ai="young South Asian software engineer with modern casual look" data-gender="Male">👨 Tech</span>
+          </div>
+          <button class="btn-secondary" id="btnGenerateAiFace" style="width: 100%;">
+            <span>🎨</span> Synthesize Face via Prompt
+          </button>
+        </div>
+
+        <!-- Section 2: Adapt to Any User Uploaded Photo -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">
+            <span>Adapt to Any Human Face (User Upload)</span>
+            <span class="label-hint">Automatic Facial Anchor Rigging</span>
+          </label>
+          <div class="upload-dropzone" id="avatarDropzone">
+            <div class="dropzone-icon">📷</div>
+            <div class="dropzone-text">Upload Custom Face Photo (.jpg, .png)</div>
+            <div class="dropzone-sub">OpenCV automatically locates eyes, jaw, and mouth mesh anchors for instant synchronization</div>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none;">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: D-ID Cloud Studio -->
+      <div class="tab-pane" id="tabDid">
+        <!-- Account Status Card -->
+        <div class="sub-card-box" style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">D-ID Cloud API Gateway</span>
+            <span class="hud-badge emerald" id="didGatewayBadge">Connected</span>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">
+            API Key: <code style="color:var(--accent-cyan); font-family:var(--font-mono);">YXV0aDB8NmFiZG...</code><br>
+            Remaining Balance: <strong id="didDetailCredits" style="color:var(--accent-emerald);">9 Credits</strong><br>
+            Max Concurrent Streams: <strong>1 Session</strong> (Auto-managed)
+          </div>
+        </div>
+
+        <!-- Real-Time WebRTC Stream Launcher -->
+        <div class="form-group">
+          <label class="form-label">
+            <span>Official D-ID WebRTC Stream Session</span>
+            <span class="label-hint">Live Cloud Lip-Sync</span>
+          </label>
+          <div style="display:flex; gap:10px;">
+            <button class="btn-primary" id="btnStartDidStream" style="flex:1;">
+              <span>🌐</span> Start Live D-ID Stream
+            </button>
+            <button class="btn-secondary" id="btnStopDidStream" style="flex:1;">
+              <span>⏹️</span> Stop Session
+            </button>
+          </div>
+          <div id="didStreamStatusDetails" style="font-size:0.78rem; font-family:var(--font-mono); color:var(--text-muted); margin-top:8px;">
+            Click to establish real-time WebRTC peer connection with D-ID.
+          </div>
+        </div>
+
+        <!-- Batch Video Render (Talks API) -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">
+            <span>High-Definition Talk Render (Batch Video)</span>
+            <span class="label-hint">D-ID Talks API</span>
+          </label>
+          <textarea id="didScriptInput" class="text-input" placeholder="Enter script for high-definition D-ID cloud generation...">Welcome to the D-ID Cloud Talk bridge. Using your verified API key, this request generates high-fidelity photorealistic video.</textarea>
+          <button class="btn-secondary" id="btnDidTalk" style="width: 100%; margin-top: 8px;">
+            <span>🚀</span> Render Cloud Video
+          </button>
+        </div>
+
+        <div id="didJobStatus" style="font-size:0.82rem; font-family:var(--font-mono); color:var(--accent-cyan); margin-top:6px;">
+          Ready to dispatch.
+        </div>
+
+        <video id="didResultVideo" controls style="display:none; width:100%; border-radius:12px; margin-top:12px; border:1px solid var(--accent-cyan);"></video>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
